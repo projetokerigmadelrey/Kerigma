@@ -67,21 +67,22 @@ interface DashboardAlert {
   priority: number;
 }
 
-const chartData = [
-  { name: 'Jan', evangelismo: 400, discipulado: 240, oracao: 240 },
-  { name: 'Fev', evangelismo: 300, discipulado: 139, oracao: 221 },
-  { name: 'Mar', evangelismo: 200, discipulado: 980, oracao: 229 },
-  { name: 'Abr', evangelismo: 278, discipulado: 390, oracao: 200 },
-  { name: 'Mai', evangelismo: 189, discipulado: 480, oracao: 218 },
-  { name: 'Jun', evangelismo: 239, discipulado: 380, oracao: 250 },
-  { name: 'Jul', evangelismo: 349, discipulado: 430, oracao: 210 },
+// Static fallback in case of loading issues, will be replaced by state
+const defaultChartData = [
+  { name: 'Jan', evangelismo: 0, discipulado: 0, oracao: 0 },
+  { name: 'Fev', evangelismo: 0, discipulado: 0, oracao: 0 },
+  { name: 'Mar', evangelismo: 0, discipulado: 0, oracao: 0 },
+  { name: 'Abr', evangelismo: 0, discipulado: 0, oracao: 0 },
+  { name: 'Mai', evangelismo: 0, discipulado: 0, oracao: 0 },
+  { name: 'Jun', evangelismo: 0, discipulado: 0, oracao: 0 },
+  { name: 'Jul', evangelismo: 1, discipulado: 1, oracao: 1 },
 ];
 
-const distributionData = [
-  { name: 'Saúde', value: 400, color: '#003f98' },
-  { name: 'Família', value: 300, color: '#4646d8' },
-  { name: 'Finanças', value: 300, color: '#705d00' },
-  { name: 'Espiritual', value: 200, color: '#1a56be' },
+const defaultDistributionData = [
+  { name: 'Saúde', value: 0, color: '#003f98' },
+  { name: 'Família', value: 0, color: '#4646d8' },
+  { name: 'Finanças', value: 0, color: '#705d00' },
+  { name: 'Espiritual', value: 0, color: '#1a56be' },
 ];
 
 export const DashboardView: React.FC = () => {
@@ -99,6 +100,8 @@ export const DashboardView: React.FC = () => {
     evangelismGrowth: '+0%',
     discipleshipGrowth: '+0%'
   });
+  const [monthlyStats, setMonthlyStats] = React.useState(defaultChartData);
+  const [prayerDistribution, setPrayerDistribution] = React.useState(defaultDistributionData);
   const [alerts, setAlerts] = React.useState<DashboardAlert[]>([]);
 
   React.useEffect(() => {
@@ -143,9 +146,21 @@ export const DashboardView: React.FC = () => {
         familyQuery = familyQuery.eq('department_id', selectedDept);
       }
 
-      const [evRes, discRes, prayerRes, familyRes] = await Promise.all([
-        evQuery, discQuery, prayerQuery, familyQuery
+      const [evRes, discRes, prayerRes, familyRes, monthlyRes, distributionRes] = await Promise.all([
+        evQuery, 
+        discQuery, 
+        prayerQuery, 
+        familyQuery,
+        supabase.rpc('get_monthly_impact_stats', { p_department_id: selectedDept === 'all' ? null : selectedDept }),
+        supabase.rpc('get_prayer_distribution_stats', { p_department_id: selectedDept === 'all' ? null : selectedDept })
       ]);
+      
+      if (monthlyRes.data) {
+        setMonthlyStats(monthlyRes.data);
+      }
+      if (distributionRes.data) {
+        setPrayerDistribution(distributionRes.data);
+      }
 
       setDashboardStats({
         evangelism: evRes.count || 0,
@@ -166,7 +181,7 @@ export const DashboardView: React.FC = () => {
     try {
       const [familiesRes, stockRes, prayersRes, evRes] = await Promise.all([
         supabase.from('assistance_families').select('id, head_name, status, urgency, department_id, created_at').or('status.eq.pendente,urgency.eq.critica,urgency.eq.alta'),
-        supabase.from('assistance_stock').select('id, item_name, quantity, min_quantity, department_id'),
+        supabase.from('assistance_stock').select('id, item_name, quantity, min_quantity'),
         supabase.from('prayers').select('id, author_name, is_urgent, content, department_id, created_at').eq('is_urgent', true).eq('is_answered', false),
         supabase.from('evangelism_records').select('id, contact_name, status, department_id, created_at').or('status.eq.visita,status.eq.contato')
       ]);
@@ -233,7 +248,7 @@ export const DashboardView: React.FC = () => {
               color: 'bg-orange-500',
               icon: Package,
               time: 'Reposição',
-              department_id: s.department_id,
+              department_id: null,
               priority: 3
             });
           }
@@ -429,7 +444,7 @@ export const DashboardView: React.FC = () => {
           
           <div className="flex-1 min-h-[160px] md:min-h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData}>
+              <AreaChart data={monthlyStats}>
                 <defs>
                   <linearGradient id="colorEvang" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.4}/>
@@ -607,7 +622,7 @@ export const DashboardView: React.FC = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={distributionData}
+                    data={prayerDistribution}
                     cx="50%"
                     cy="50%"
                     innerRadius={50}
@@ -615,7 +630,7 @@ export const DashboardView: React.FC = () => {
                     paddingAngle={5}
                     dataKey="value"
                   >
-                    {distributionData.map((entry, index) => (
+                    {prayerDistribution.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
@@ -626,15 +641,19 @@ export const DashboardView: React.FC = () => {
               </ResponsiveContainer>
             </div>
             <div className="w-full sm:w-1/2 space-y-3 md:space-y-4">
-              {distributionData.map((item, i) => (
-                <div key={i} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 md:gap-3">
-                    <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                    <span className="text-[10px] font-black uppercase tracking-widest opacity-70">{item.name}</span>
+              {prayerDistribution.map((item, i) => {
+                const total = prayerDistribution.reduce((acc, curr) => acc + curr.value, 0);
+                const percentage = total > 0 ? ((item.value / total) * 100).toFixed(0) : 0;
+                return (
+                  <div key={i} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 md:gap-3">
+                      <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                      <span className="text-[10px] font-black uppercase tracking-widest opacity-70">{item.name}</span>
+                    </div>
+                    <span className="text-xs font-black">{percentage}%</span>
                   </div>
-                  <span className="text-xs font-black">{((item.value / 1200) * 100).toFixed(0)}%</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </motion.div>

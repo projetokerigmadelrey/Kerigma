@@ -11,7 +11,8 @@ import {
   MoreVertical,
   PartyPopper,
   X,
-  Loader2
+  Loader2,
+  Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
@@ -149,6 +150,23 @@ export const PrayerView: React.FC = () => {
       if (error) throw error;
     } catch (err) {
       console.error('Error updating intercessors:', err);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Tem certeza que deseja excluir este projeto de oração?')) return;
+    
+    try {
+      const { error } = await supabase
+        .from('prayers')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      setRequests(prev => prev.filter(r => r.id !== id));
+    } catch (err) {
+      console.error('Error deleting prayer:', err);
+      alert('Erro ao excluir projeto de oração.');
     }
   };
 
@@ -295,14 +313,25 @@ export const PrayerView: React.FC = () => {
               </div>
               <p className="text-on-surface-variant text-xs md:text-sm leading-relaxed mb-3 md:mb-4">{req.content}</p>
               <div className="flex items-center justify-between border-t border-surface-low pt-3 md:pt-4">
-                <div className="flex items-center gap-1">
-                  {req.is_answered ? (
-                    <div className="flex items-center gap-1 text-teal-600">
-                      <PartyPopper size={12} className="md:w-3.5 md:h-3.5" />
-                      <span className="text-[10px] md:text-xs font-semibold">{req.intercessors_count} Apoios</span>
-                    </div>
-                  ) : (
-                    <span className="text-on-surface-variant text-[10px] md:text-xs font-semibold">{req.intercessors_count} Apoiando o projeto</span>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1">
+                    {req.is_answered ? (
+                      <div className="flex items-center gap-1 text-teal-600">
+                        <PartyPopper size={12} className="md:w-3.5 md:h-3.5" />
+                        <span className="text-[10px] md:text-xs font-semibold">{req.intercessors_count} Apoios</span>
+                      </div>
+                    ) : (
+                      <span className="text-on-surface-variant text-[10px] md:text-xs font-semibold">{req.intercessors_count} Apoiando o projeto</span>
+                    )}
+                  </div>
+                  {req.user_id === currentUserId && (
+                    <button 
+                      onClick={() => handleDelete(req.id)}
+                      className="p-1.5 rounded-md hover:bg-red-50 text-red-400 hover:text-red-500 transition-colors"
+                      title="Excluir projeto"
+                    >
+                      <Trash2 size={14} className="md:w-4 md:h-4" />
+                    </button>
                   )}
                 </div>
                 <button 

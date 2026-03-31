@@ -10,7 +10,8 @@ import {
   MapPin,
   ChevronRight,
   Plus,
-  Loader2
+  Loader2,
+  Trash2
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '@/lib/utils';
@@ -51,6 +52,7 @@ export const EvangelismView: React.FC = () => {
   });
   const [departments, setDepartments] = useState<Department[]>([]);
   const [selectedDeptFilter, setSelectedDeptFilter] = useState('all');
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchRecords();
@@ -62,6 +64,12 @@ export const EvangelismView: React.FC = () => {
         fetchRecords();
       })
       .subscribe();
+
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) setCurrentUserId(user.id);
+    };
+    fetchUser();
 
     return () => {
       subscription.unsubscribe();
@@ -151,6 +159,24 @@ export const EvangelismView: React.FC = () => {
       alert('Erro ao salvar registro.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (!window.confirm('Tem certeza que deseja excluir este contato?')) return;
+    
+    try {
+      const { error } = await supabase
+        .from('evangelism_records')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      setRecords(prev => prev.filter(r => r.id !== id));
+    } catch (err) {
+      console.error('Error deleting record:', err);
+      alert('Erro ao excluir registro.');
     }
   };
 
@@ -267,7 +293,7 @@ export const EvangelismView: React.FC = () => {
               filteredRecords.map((record, i) => {
                 const dept = departments.find(d => d.id === record.department_id);
                 return (
-                  <button 
+                  <div 
                     key={record.id} 
                     onClick={() => handleEdit(record)}
                     className="w-full text-left tonal-card p-3 md:p-4 flex items-center justify-between group hover:shadow-md transition-shadow cursor-pointer active:scale-[0.99]"
@@ -287,14 +313,25 @@ export const EvangelismView: React.FC = () => {
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1.5 md:gap-2">
-                      <span className={cn("px-2 md:px-3 py-0.5 md:py-1 text-[8px] md:text-[10px] font-bold uppercase tracking-wider rounded-md", getStatusColor(record.status))}>
-                        {getStatusLabel(record.status)}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {record.user_id === currentUserId && (
+                          <button
+                            onClick={(e) => handleDelete(e, record.id)}
+                            className="p-1.5 text-red-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                            title="Excluir contato"
+                          >
+                            <Trash2 size={14} className="md:w-4 md:h-4" />
+                          </button>
+                        )}
+                        <span className={cn("px-2 md:px-3 py-0.5 md:py-1 text-[8px] md:text-[10px] font-bold uppercase tracking-wider rounded-md", getStatusColor(record.status))}>
+                          {getStatusLabel(record.status)}
+                        </span>
+                      </div>
                       <p className="text-[9px] md:text-[10px] text-on-surface-variant">
                         {new Date(record.created_at).toLocaleDateString()}
                       </p>
                     </div>
-                  </button>
+                  </div>
                 );
               })
             )}

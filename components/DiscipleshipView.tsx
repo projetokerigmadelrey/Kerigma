@@ -344,7 +344,8 @@ export const DiscipleshipView: React.FC = () => {
     setIsEditModalOpen(true);
   };
 
-  const getPhaseLabel = (phase: string) => {
+  const getPhaseLabel = (phase: string | null | undefined) => {
+    if (!phase) return 'NÃO DEFINIDO';
     switch (phase) {
       case 'pre-encontro': return 'PRÉ-ENCONTRO';
       case 'consolidacao': return 'CONSOLIDAÇÃO';
@@ -353,7 +354,8 @@ export const DiscipleshipView: React.FC = () => {
     }
   };
 
-  const getPhaseColor = (phase: string) => {
+  const getPhaseColor = (phase: string | null | undefined) => {
+    if (!phase) return 'bg-surface-low text-on-surface-variant border-outline';
     switch (phase) {
       case 'pre-encontro': return 'bg-secondary/10 text-secondary border-secondary';
       case 'consolidacao': return 'bg-tertiary/10 text-tertiary border-tertiary';
