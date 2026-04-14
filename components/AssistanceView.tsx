@@ -23,6 +23,7 @@ import { motion } from 'motion/react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { Modal, Input, Select, TextArea } from './Forms';
+import { ProjectManager } from './ProjectManager';
 
 interface AssistanceFamily {
   id: string;
@@ -662,6 +663,8 @@ export const AssistanceView: React.FC = () => {
           </div>
         </section>
       </div>
+
+      <ProjectManager pillar="assistencia" />
 
       {/* Modals */}
       <Modal 

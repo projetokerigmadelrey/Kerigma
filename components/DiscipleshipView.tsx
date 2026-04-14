@@ -20,6 +20,7 @@ import { motion } from 'motion/react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { Modal, Input, Select } from './Forms';
+import { ProjectManager } from './ProjectManager';
 
 interface Disciple {
   id: string;
@@ -536,6 +537,8 @@ export const DiscipleshipView: React.FC = () => {
           )}
         </div>
       </section>
+
+      <ProjectManager pillar="discipulado" />
 
       <button 
         onClick={() => setIsModalOpen(true)}

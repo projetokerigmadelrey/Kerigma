@@ -17,6 +17,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
 import { Modal, Input, TextArea, Select } from './Forms';
+import { ProjectManager } from './ProjectManager';
 import { supabase } from '@/lib/supabase';
 
 interface PrayerRequest {
@@ -349,6 +350,8 @@ export const PrayerView: React.FC = () => {
           ))
         )}
       </div>
+
+      <ProjectManager pillar="oracao" />
 
       <button 
         onClick={() => setIsModalOpen(true)}

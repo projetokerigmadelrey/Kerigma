@@ -17,6 +17,7 @@ import { motion } from 'motion/react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { Modal, Input, Select, TextArea } from './Forms';
+import { ProjectManager } from './ProjectManager';
 
 interface EvangelismRecord {
   id: string;
@@ -377,6 +378,8 @@ export const EvangelismView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <ProjectManager pillar="evangelismo" />
 
       <Modal 
         isOpen={isModalOpen} 
