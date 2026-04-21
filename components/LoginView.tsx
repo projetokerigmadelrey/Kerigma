@@ -2,12 +2,12 @@
 
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Lock, Mail, Eye, EyeOff, LogIn, UserPlus } from 'lucide-react';
+import { Lock, Mail, Eye, EyeOff, LogIn, UserPlus, KeyRound, ArrowLeft } from 'lucide-react';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 
 export const LoginView: React.FC = () => {
-  const [isLogin, setIsLogin] = useState(true);
+  const [viewMode, setViewMode] = useState<'login' | 'register' | 'forgot'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -20,7 +20,14 @@ export const LoginView: React.FC = () => {
     setError(null);
     
     try {
-      if (isLogin) {
+      if (viewMode === 'forgot') {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/`,
+        });
+        if (error) throw error;
+        alert('Se este email estiver cadastrado, você receberá um link para redefinir sua senha.');
+        setViewMode('login');
+      } else if (viewMode === 'login') {
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -38,7 +45,7 @@ export const LoginView: React.FC = () => {
         });
         if (error) throw error;
         alert('Cadastro realizado! Verifique seu e-mail para confirmar.');
-        setIsLogin(true);
+        setViewMode('login');
       }
     } catch (err: any) {
       setError(err.message || 'Ocorreu um erro inesperado.');
@@ -113,7 +120,7 @@ export const LoginView: React.FC = () => {
             transition={{ delay: 0.5 }}
             className="text-white/60 text-[8px] md:text-xs font-black uppercase tracking-[0.3em]"
           >
-            {isLogin ? 'Painel Ministerial' : 'Nova Conta'}
+            {viewMode === 'login' ? 'Painel Ministerial' : viewMode === 'register' ? 'Nova Conta' : 'Recuperar Acesso'}
           </motion.p>
         </div>
 
@@ -154,45 +161,51 @@ export const LoginView: React.FC = () => {
             </div>
           </motion.div>
 
-          <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.7 }}
-            className="space-y-1.5 md:space-y-2"
-          >
-            <label className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-white/50 ml-1">
-              Senha
-            </label>
-            <div className="relative group">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-white/30 group-focus-within:text-primary transition-colors">
-                <Lock size={18} className="md:w-5 md:h-5" />
+          {viewMode !== 'forgot' && (
+            <motion.div 
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.7 }}
+              className="space-y-1.5 md:space-y-2"
+            >
+              <label className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-white/50 ml-1">
+                Senha
+              </label>
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-white/30 group-focus-within:text-primary transition-colors">
+                  <Lock size={18} className="md:w-5 md:h-5" />
+                </div>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl py-3 md:py-4 pl-11 md:pl-12 pr-11 md:pr-12 text-white focus:outline-none focus:ring-2 focus:ring-primary/40 focus:bg-white/10 transition-all placeholder:text-white/20 font-medium text-sm md:text-base"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-white/30 hover:text-primary transition-colors"
+                >
+                  {showPassword ? <EyeOff size={18} className="md:w-5 md:h-5" /> : <Eye size={18} className="md:w-5 md:h-5" />}
+                </button>
               </div>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl py-3 md:py-4 pl-11 md:pl-12 pr-11 md:pr-12 text-white focus:outline-none focus:ring-2 focus:ring-primary/40 focus:bg-white/10 transition-all placeholder:text-white/20 font-medium text-sm md:text-base"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-4 flex items-center text-white/30 hover:text-primary transition-colors"
-              >
-                {showPassword ? <EyeOff size={18} className="md:w-5 md:h-5" /> : <Eye size={18} className="md:w-5 md:h-5" />}
-              </button>
-            </div>
-          </motion.div>
+            </motion.div>
+          )}
 
-          {isLogin && (
+          {viewMode === 'login' && (
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.8 }}
               className="flex justify-end"
             >
-              <button type="button" className="text-[9px] md:text-[10px] font-black text-primary uppercase tracking-widest hover:text-primary/80 transition-all">
+              <button 
+                type="button" 
+                onClick={() => setViewMode('forgot')}
+                className="text-[9px] md:text-[10px] font-black text-primary uppercase tracking-widest hover:text-primary/80 transition-all"
+              >
                 Esqueceu a senha?
               </button>
             </motion.div>
@@ -212,29 +225,39 @@ export const LoginView: React.FC = () => {
               <div className="w-4 h-4 md:w-5 md:h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
               <>
-                {isLogin ? <LogIn size={18} className="md:w-5 md:h-5" /> : <UserPlus size={18} className="md:w-5 md:h-5" />}
-                <span>{isLogin ? 'Entrar' : 'Cadastrar'}</span>
+                {viewMode === 'login' && <><LogIn size={18} className="md:w-5 md:h-5" /> <span>Entrar</span></>}
+                {viewMode === 'register' && <><UserPlus size={18} className="md:w-5 md:h-5" /> <span>Cadastrar</span></>}
+                {viewMode === 'forgot' && <><KeyRound size={18} className="md:w-5 md:h-5" /> <span>Recuperar Senha</span></>}
               </>
             )}
           </motion.button>
         </form>
 
-        {/* Toggle Login/Register */}
+        {/* Toggle Login/Register/Forgot */}
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1 }}
-          className="mt-6 md:mt-10 text-center"
+          className="mt-6 md:mt-10 text-center flex flex-col gap-2"
         >
-          <p className="text-[10px] md:text-xs text-white/40 font-bold">
-            {isLogin ? 'Não tem uma conta?' : 'Já tem uma conta?'}
+          {viewMode === 'forgot' ? (
             <button
-              onClick={() => setIsLogin(!isLogin)}
-              className="ml-2 font-black text-primary uppercase tracking-widest hover:underline transition-all"
+              onClick={() => setViewMode('login')}
+              className="font-black text-white/50 uppercase tracking-widest hover:text-white transition-all text-[10px] md:text-xs flex items-center justify-center gap-2"
             >
-              {isLogin ? 'Cadastre-se' : 'Faça login'}
+              <ArrowLeft size={14} /> Voltar para o Login
             </button>
-          </p>
+          ) : (
+            <p className="text-[10px] md:text-xs text-white/40 font-bold">
+              {viewMode === 'login' ? 'Não tem uma conta?' : 'Já tem uma conta?'}
+              <button
+                onClick={() => setViewMode(viewMode === 'login' ? 'register' : 'login')}
+                className="ml-2 font-black text-primary uppercase tracking-widest hover:underline transition-all"
+              >
+                {viewMode === 'login' ? 'Cadastre-se' : 'Faça login'}
+              </button>
+            </p>
+          )}
         </motion.div>
 
         {/* Footer Info */}

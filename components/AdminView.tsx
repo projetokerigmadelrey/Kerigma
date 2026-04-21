@@ -16,7 +16,9 @@ import {
   CheckCircle2,
   XCircle,
   ChevronRight,
-  Loader2
+  Loader2,
+  KeyRound,
+  RefreshCcw
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '@/lib/utils';
@@ -55,6 +57,12 @@ export const AdminView: React.FC = () => {
   const [showNewDeptModal, setShowNewDeptModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
+  const [resetPasswordOption, setResetPasswordOption] = useState<'auto' | 'manual'>('auto');
+  const [newManualPassword, setNewManualPassword] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
+  const [resetMessage, setResetMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
 
   const [deptForm, setDeptForm] = useState({
     name: '',
@@ -204,6 +212,51 @@ export const AdminView: React.FC = () => {
     }
   };
 
+  const handleResetPassword = async () => {
+    if (!selectedUser) return;
+    setResetMessage(null);
+    setIsResetting(true);
+    
+    try {
+      let finalPassword = newManualPassword;
+      if (resetPasswordOption === 'auto') {
+        finalPassword = Math.random().toString(36).slice(-8); // Generate random 8 char string
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await fetch('/api/admin/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify({
+          targetUserId: selectedUser.id,
+          newPassword: finalPassword
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Erro ao redefinir a senha.');
+      }
+
+      setResetMessage({
+        type: 'success',
+        text: resetPasswordOption === 'auto' 
+          ? `Senha redefinida com sucesso!\nA nova senha é: ${finalPassword}`
+          : 'Senha manual definida com sucesso!'
+      });
+      setNewManualPassword('');
+    } catch (err: any) {
+      setResetMessage({ type: 'error', text: err.message });
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   const filteredProfiles = profiles.filter(p => 
     p.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.email?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -304,7 +357,17 @@ export const AdminView: React.FC = () => {
                       <p className="text-[10px] md:text-xs text-on-surface-variant">{selectedUser.role} • {selectedUser.email}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 md:gap-2">
+                  <div className="flex flex-wrap items-center gap-1 md:gap-2">
+                    <button 
+                      onClick={() => {
+                        setResetMessage(null);
+                        setResetPasswordOption('auto');
+                        setShowResetPasswordModal(true);
+                      }}
+                      className="px-2 md:px-3 py-1 md:py-2 text-[10px] md:text-xs font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors flex items-center gap-1.5"
+                    >
+                      <KeyRound size={14} /> Redefinir Senha
+                    </button>
                     <Select 
                       label=""
                       value={selectedUser.role}
@@ -474,6 +537,67 @@ export const AdminView: React.FC = () => {
             onClick={handleCreateDept}
           >
             Criar Departamento
+          </button>
+        </div>
+      </Modal>
+
+      <Modal 
+        isOpen={showResetPasswordModal} 
+        onClose={() => setShowResetPasswordModal(false)}
+        title="Redefinir Senha"
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-on-surface-variant mb-2">
+            Redefinindo a senha para: <strong className="text-on-surface">{selectedUser?.full_name}</strong>
+          </p>
+          
+          <div className="flex items-center gap-4 mb-4">
+            <label className="flex items-center gap-2 text-xs font-bold cursor-pointer">
+              <input 
+                type="radio" 
+                name="resetOpt" 
+                checked={resetPasswordOption === 'auto'} 
+                onChange={() => setResetPasswordOption('auto')}
+                className="text-primary focus:ring-primary"
+              /> Automática
+            </label>
+            <label className="flex items-center gap-2 text-xs font-bold cursor-pointer">
+              <input 
+                type="radio" 
+                name="resetOpt" 
+                checked={resetPasswordOption === 'manual'} 
+                onChange={() => setResetPasswordOption('manual')}
+                className="text-primary focus:ring-primary"
+              /> Manual
+            </label>
+          </div>
+
+          {resetPasswordOption === 'manual' && (
+            <Input 
+              label="Nova Senha" 
+              placeholder="Digite a nova senha" 
+              type="text"
+              value={newManualPassword}
+              onChange={(e) => setNewManualPassword(e.target.value)}
+            />
+          )}
+
+          {resetMessage && (
+            <div className={cn(
+              "p-3 text-[10px] md:text-xs rounded-xl font-bold whitespace-pre-wrap",
+              resetMessage.type === 'success' ? "bg-teal-50 text-teal-600 border border-teal-500/20" : "bg-error/10 text-error border border-error/20"
+            )}>
+              {resetMessage.text}
+            </div>
+          )}
+
+          <button 
+            className="w-full py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 disabled:opacity-50 transition-all mt-4 flex justify-center items-center gap-2"
+            onClick={handleResetPassword}
+            disabled={isResetting || (resetPasswordOption === 'manual' && newManualPassword.length < 6)}
+          >
+            {isResetting ? <Loader2 size={16} className="animate-spin" /> : <RefreshCcw size={16} />}
+            Confirmar Redefinição
           </button>
         </div>
       </Modal>
